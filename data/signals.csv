@@ -1,2 +1,2 @@
 id,timestamp,tier,direction,entry,sl,tp,lot,risk_usd,score,votes,news_flag,status,closed_at,pnl_usd,balance_after
-62ffea536e,1781201700,SILVER,BUY,4158.32,4128.77,4202.66,0.0,0.0,4,MACD bullish|ATR normal|London/NY session|bullish engulfing,0,open,,,
+62ffea536e,1781201700,SILVER,BUY,4158.32,4128.77,4202.66,0.0,0.0,4,MACD bullish|ATR normal|London/NY session|bullish engulfing,0,tp,1781206200,0.0,100.0

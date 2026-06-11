@@ -1,7 +1,35 @@
 {
   "balance": 100.0,
-  "open_signal": null,
-  "last_scan_ts": 1781199739,
+  "open_signal": {
+    "id": "62ffea536e",
+    "created_ts": 1781201700,
+    "tier": "SILVER",
+    "direction": "BUY",
+    "entry": 4158.32,
+    "sl": 4128.77,
+    "tp": 4202.66,
+    "lot": 0.0,
+    "risk_usd": 0.0,
+    "score": 4,
+    "reasons": [
+      "MACD bullish",
+      "ATR normal",
+      "London/NY session",
+      "bullish engulfing"
+    ],
+    "missing": [
+      "trend",
+      "momentum",
+      "support/resistance"
+    ],
+    "min_lot_flag": false,
+    "news_flag": false,
+    "status": "open",
+    "closed_ts": null,
+    "pnl_usd": null,
+    "balance_after": null
+  },
+  "last_scan_ts": 1781202433,
   "errors": [],
   "last_no_signal": "buy 3/7 (MACD bullish, ATR normal, London/NY session) \u00b7 sell 2/7 (ATR normal, London/NY session) \u2014 below threshold",
   "news_skips": []

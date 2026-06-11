@@ -1,0 +1,8 @@
+{
+  "balance": 100.0,
+  "open_signal": null,
+  "last_scan_ts": 1781189399,
+  "errors": [],
+  "last_no_signal": "setup at 5/7 skipped \u2014 stop too wide for the $100 account even at the minimum lot",
+  "news_skips": []
+}

@@ -137,6 +137,26 @@ SILVER uses 🥈, half risk, same format.
 - `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `TWELVEDATA_API_KEY` as GitHub Actions
   secrets. GitHub repo on the user's account. User's timezone for the morning report.
 
+## Post-backtest amendments (2026-06-11)
+
+A 49-day backtest (Apr 22–Jun 11 2026, 5000 15m candles) of the exact production
+engine forced two changes before going live:
+
+1. **SILVER is info-only by default** (`config.SILVER_INFO_ONLY = True`). Silver
+   (4/7) setups lost money in every tested variant (win rate 33–41%, profit factor
+   ≤ 1.08). Silver signals are still sent and their TP/SL outcomes logged — as
+   evidence for the weekly self-check — but with no lot size and no effect on the
+   ledger, until forward data earns them real money.
+2. **GOLD risk cap** (`config.MAX_RISK_MULT = 2.0`): a GOLD setup whose
+   minimum-lot (0.01) risk exceeds 2× the $5 plan is skipped and the reason
+   recorded. Without the cap the backtest's max drawdown was $246 on a $100
+   account — i.e. a blown account — because gold's ATR frequently makes the
+   minimum lot risk $10–20.
+
+Backtest reference numbers (one regime, small sample — not a promise):
+GOLD tier 46 closed trades, 45.7% win rate, profit factor 1.70; results across
+filter variants ranged from +$115 to −$91, so the live log is the real test.
+
 ## Out of scope
 
 Auto-execution at a broker, ML prediction, multiple instruments, trade-management

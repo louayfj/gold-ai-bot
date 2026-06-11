@@ -1,8 +1,6 @@
 name: weekly-self-check
 on:
-  schedule:
-    - cron: "0 12 * * 0"   # Sunday 19:00 Asia/Bangkok
-  workflow_dispatch:
+  workflow_dispatch:  # cron disabled — Fly.io scheduler handles this now
 
 concurrency:
   group: goldeye

@@ -1,8 +1,6 @@
 name: daily-report
 on:
-  schedule:
-    - cron: "0 1 * * *"   # 08:00 Asia/Bangkok
-  workflow_dispatch:
+  workflow_dispatch:  # cron disabled — Fly.io scheduler handles this now
 
 concurrency:
   group: goldeye

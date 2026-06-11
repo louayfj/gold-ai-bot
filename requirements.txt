@@ -2,3 +2,4 @@ requests>=2.31
 yfinance>=0.2.40
 pytest>=8.0
 python-dotenv>=1.0
+schedule>=1.2

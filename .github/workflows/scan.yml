@@ -1,8 +1,6 @@
 name: scan
 on:
-  schedule:
-    - cron: "*/15 * * * *"
-  workflow_dispatch:
+  workflow_dispatch:  # cron disabled — Fly.io scheduler handles this now
 
 # never let two scans run at once: they would race on data/ commits
 concurrency:

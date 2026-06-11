@@ -1,0 +1,13 @@
+app = "goldeye-bot"
+primary_region = "sin"
+
+[build]
+
+[[mounts]]
+  source = "goldeye_data"
+  destination = "/app/data"
+
+[[vm]]
+  memory = "256mb"
+  cpu_kind = "shared"
+  cpus = 1

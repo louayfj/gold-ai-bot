@@ -8,6 +8,14 @@ RISK_SILVER = 2.5     # $ risked per SILVER signal
 # Engine thresholds
 GOLD_MIN_SCORE = 5    # 5-7 of 7 factors
 SILVER_SCORE = 4
+
+# Post-backtest tuning (2026-06-11, 49 days of 15m data):
+# - SILVER lost money in every tested variant -> info-only until forward data
+#   proves otherwise (flip to False to give silver real lot sizes again).
+# - GOLD trades whose minimum-lot risk exceeds MAX_RISK_MULT * plan are skipped;
+#   uncapped, the backtest drawdown ($246) would have blown the $100 account.
+SILVER_INFO_ONLY = True
+MAX_RISK_MULT = 2.0
 RR = 1.5              # take-profit = RR * stop distance
 SL_ATR_MULT = 1.5
 
@@ -28,12 +36,13 @@ STATE_JSON = os.path.join(DATA_DIR, "state.json")
 _SECRET_NAMES = ("TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "TWELVEDATA_API_KEY")
 
 
-def load_secrets() -> dict:
-    try:
-        from dotenv import load_dotenv
-        load_dotenv()
-    except ImportError:
-        pass
+def load_secrets(use_dotenv: bool = True) -> dict:
+    if use_dotenv:
+        try:
+            from dotenv import load_dotenv
+            load_dotenv()
+        except ImportError:
+            pass
     secrets = {}
     missing = []
     for name in _SECRET_NAMES:

@@ -6,11 +6,13 @@ import uuid
 from goldeye.config import (
     GOLD_MIN_SCORE,
     LOT_STEP,
+    MAX_RISK_MULT,
     MIN_LOT,
     OZ_PER_LOT,
     RISK_GOLD,
     RISK_SILVER,
     RR,
+    SILVER_INFO_ONLY,
     SILVER_SCORE,
     SL_ATR_MULT,
 )
@@ -39,7 +41,15 @@ def evaluate(ctx: FactorContext) -> Signal | None:
     is_buy = direction == Direction.BUY
     reasons = [v.label for v in votes if (v.buy if is_buy else v.sell)]
     missing = [v.label for v in votes if not (v.buy if is_buy else v.sell)]
-    return build_signal(direction, tier, score, reasons, missing, ctx)
+    sig = build_signal(direction, tier, score, reasons, missing, ctx)
+
+    if tier == Tier.SILVER and SILVER_INFO_ONLY:
+        sig.lot = 0.0
+        sig.risk_usd = 0.0
+        sig.min_lot_flag = False
+    elif tier == Tier.GOLD and sig.risk_usd > RISK_GOLD * MAX_RISK_MULT:
+        return None  # stop too wide for the account even at the minimum lot
+    return sig
 
 
 def build_signal(

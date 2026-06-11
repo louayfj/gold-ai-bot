@@ -50,10 +50,17 @@ def run() -> None:
             votes = [f(ctx) for f in ALL_FACTORS]
             buy = [v.label for v in votes if v.buy]
             sell = [v.label for v in votes if v.sell]
-            state["last_no_signal"] = (
-                f"buy {len(buy)}/7 ({', '.join(buy) or 'none'}) · "
-                f"sell {len(sell)}/7 ({', '.join(sell) or 'none'}) — below threshold"
-            )
+            if max(len(buy), len(sell)) >= config.GOLD_MIN_SCORE:
+                # threshold was met, so evaluate() skipped it for oversized risk
+                state["last_no_signal"] = (
+                    f"setup at {max(len(buy), len(sell))}/7 skipped — stop too "
+                    "wide for the $100 account even at the minimum lot"
+                )
+            else:
+                state["last_no_signal"] = (
+                    f"buy {len(buy)}/7 ({', '.join(buy) or 'none'}) · "
+                    f"sell {len(sell)}/7 ({', '.join(sell) or 'none'}) — below threshold"
+                )
 
     state["last_scan_ts"] = now_ts
     storage.save_state(state)

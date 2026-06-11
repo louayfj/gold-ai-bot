@@ -80,11 +80,25 @@ def test_min_lot_flag_when_risk_exceeds_plan(monkeypatch):
     assert sig.risk_usd == pytest.approx(6.3)
 
 
-def test_silver_uses_half_risk(monkeypatch):
+def test_silver_is_info_only(monkeypatch):
     monkeypatch.setattr(engine, "ALL_FACTORS", fake_factors(4, 0, 3))
-    # sl_dist = $1.50 -> gold lot would be 0.03; silver risk 2.5 -> 0.01
     ctx = make_ctx(atr15=1.0, swing_lows=[3300.0])
     sig = engine.evaluate(ctx)
     assert sig.tier == Tier.SILVER
-    assert sig.lot == pytest.approx(0.01)
-    assert sig.risk_usd == pytest.approx(1.5)
+    assert sig.lot == 0.0
+    assert sig.risk_usd == 0.0
+
+
+def test_gold_skipped_when_risk_exceeds_cap(monkeypatch):
+    monkeypatch.setattr(engine, "ALL_FACTORS", fake_factors(5, 0, 2))
+    # sl_dist = 1.5 * 7.0 = $10.50 -> min-lot risk $10.50 > 2x plan ($10) -> skip
+    ctx = make_ctx(atr15=7.0, swing_lows=[3300.0])
+    assert engine.evaluate(ctx) is None
+
+
+def test_gold_min_lot_allowed_within_cap(monkeypatch):
+    monkeypatch.setattr(engine, "ALL_FACTORS", fake_factors(5, 0, 2))
+    # sl_dist = $6.30 -> min-lot risk $6.30, within the $10 cap -> flagged but sent
+    ctx = make_ctx(atr15=4.2, swing_lows=[3300.0])
+    sig = engine.evaluate(ctx)
+    assert sig is not None and sig.min_lot_flag is True

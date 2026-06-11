@@ -6,10 +6,8 @@ from goldeye import config
 def test_load_secrets_raises_on_missing(monkeypatch):
     for name in ("TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "TWELVEDATA_API_KEY"):
         monkeypatch.delenv(name, raising=False)
-    monkeypatch.setattr(config, "load_secrets", config.load_secrets)
-    monkeypatch.chdir("/tmp")  # avoid picking up a local .env
     with pytest.raises(RuntimeError, match="TELEGRAM_BOT_TOKEN"):
-        config.load_secrets()
+        config.load_secrets(use_dotenv=False)
 
 
 def test_load_secrets_reads_env(monkeypatch):

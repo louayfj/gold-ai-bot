@@ -20,9 +20,15 @@ def format_signal(sig: Signal) -> str:
         f"Entry: {sig.entry:,.2f}",
         f"SL:    {sig.sl:,.2f}  (−${sl_dist:,.2f}/oz)",
         f"TP:    {sig.tp:,.2f}  (+${tp_dist:,.2f}/oz, R:R 1:{rr:.1f})",
-        f"Lot:   {sig.lot:.2f}  → risk ≈ ${sig.risk_usd:,.2f}"
-        + ("" if sig.min_lot_flag else f" ({risk_pct})"),
     ]
+    if sig.lot == 0:
+        lines.append("Lot:   — (info only: watch it, don't trade it — "
+                     "silver setups are being evaluated)")
+    else:
+        lines.append(
+            f"Lot:   {sig.lot:.2f}  → risk ≈ ${sig.risk_usd:,.2f}"
+            + ("" if sig.min_lot_flag else f" ({risk_pct})")
+        )
     if sig.min_lot_flag:
         lines.append("⚠️ Risk exceeds plan at the minimum lot (0.01) — "
                      "skip this one if that's too much.")
@@ -35,6 +41,11 @@ def format_signal(sig: Signal) -> str:
 
 def format_outcome(sig: Signal) -> str:
     direction = f"{sig.direction.value} from {sig.entry:,.2f}"
+    if sig.lot == 0:  # info-only signal: outcome tracked, no money attached
+        result = {Status.TP: "🎯 hit TP", Status.SL: "🛑 hit SL"}.get(
+            sig.status, "⌛ expired")
+        return (f"ℹ️ Info signal {result}  ({direction}) — "
+                "logged for the weekly stats, no $ attached.")
     if sig.status == Status.TP:
         head = f"🎯 TP hit: +${sig.pnl_usd:,.2f}  ({direction})"
     elif sig.status == Status.SL:

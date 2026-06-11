@@ -15,11 +15,25 @@ def test_format_gold_signal():
     assert "Missing: candle pattern" in text
 
 
-def test_format_silver_signal_and_min_lot_warning():
-    sig = make_signal(tier=Tier.SILVER, score=4, min_lot_flag=True, risk_usd=6.3)
+def test_format_silver_signal_is_info_only():
+    sig = make_signal(tier=Tier.SILVER, score=4, lot=0.0, risk_usd=0.0)
     text = format_signal(sig)
     assert "🥈 SILVER SIGNAL" in text
+    assert "info only" in text
+
+
+def test_format_gold_min_lot_warning():
+    sig = make_signal(min_lot_flag=True, risk_usd=6.3)
+    text = format_signal(sig)
     assert "⚠️" in text and "minimum lot" in text
+
+
+def test_format_outcome_info_signal_has_no_money():
+    sig = make_signal(tier=Tier.SILVER, lot=0.0, risk_usd=0.0,
+                      status=Status.TP, pnl_usd=0.0, balance_after=100.0)
+    text = format_outcome(sig)
+    assert "Info signal" in text and "no $ attached" in text
+    assert "Balance" not in text
 
 
 def test_format_outcome_tp_and_sl():

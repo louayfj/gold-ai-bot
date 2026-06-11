@@ -1,8 +1,8 @@
 {
   "balance": 100.0,
   "open_signal": null,
-  "last_scan_ts": 1781194977,
+  "last_scan_ts": 1781199739,
   "errors": [],
-  "last_no_signal": "setup at 6/7 skipped \u2014 stop too wide for the $100 account even at the minimum lot",
+  "last_no_signal": "buy 3/7 (MACD bullish, ATR normal, London/NY session) \u00b7 sell 2/7 (ATR normal, London/NY session) \u2014 below threshold",
   "news_skips": []
 }

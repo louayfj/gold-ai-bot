@@ -8,6 +8,21 @@ from goldeye import config, data, engine, ml, news, sentiment, storage, telegram
 from goldeye.factors import ALL_FACTORS, FactorContext, Vote  # noqa: F401 (Vote: test seam)
 from goldeye.models import Direction
 
+_FACTOR_NAMES = ["Trend", "Momentum", "MACD", "Volatility", "S/R", "Session", "Candles"]
+
+
+def _log_activity(state, now, event, *, direction=None, score=None, detail=""):
+    log = state.setdefault("activity_log", [])
+    log.append({
+        "ts": int(now.timestamp()),
+        "time": f"{now:%d %b %H:%M} UTC",
+        "event": event,
+        "direction": direction,
+        "score": score,
+        "detail": detail,
+    })
+    state["activity_log"] = log[-20:]
+
 
 def run() -> None:
     config.load_secrets()
@@ -25,12 +40,28 @@ def run() -> None:
             state["open_signal"] = None
             storage.update_signal(closed)
             telegram.send(telegram.format_outcome(closed))
+            _log_activity(state, now, f"closed_{closed.status.value}",
+                          direction=sig.direction.value,
+                          detail=f"P/L {closed.pnl_usd:+.2f}" if closed.pnl_usd is not None else "")
 
     # 2. Look for a new signal
     if state.get("open_signal") is None:
         c15 = data.fetch_candles("15min", 350)
         c1h = data.fetch_candles("1h", 350)
         ctx = FactorContext.build(c15, c1h, now)
+
+        # Always compute votes so the dashboard can show factor gauges
+        votes = [f(ctx) for f in ALL_FACTORS]
+        state["last_factor_votes"] = [
+            {
+                "name": _FACTOR_NAMES[i] if i < len(_FACTOR_NAMES) else f"F{i + 1}",
+                "buy": v.buy,
+                "sell": v.sell,
+                "label": v.label,
+            }
+            for i, v in enumerate(votes)
+        ]
+
         sig = engine.evaluate(ctx)
         if sig is not None:
             events, warning = news.fetch_calendar()
@@ -43,6 +74,9 @@ def run() -> None:
                 skips = state.setdefault("news_skips", [])
                 skips.append(f"{now:%d %b %H:%M} UTC — {block}")
                 state["news_skips"] = skips[-5:]
+                _log_activity(state, now, "skipped_calendar",
+                              direction=sig.direction.value, score=sig.score,
+                              detail=f"news: {block}")
             else:
                 headlines, senti_warn = sentiment.fetch_headlines()
                 if senti_warn:
@@ -57,6 +91,9 @@ def run() -> None:
                     skips = state.setdefault("news_skips", [])
                     skips.append(f"{now:%d %b %H:%M} UTC — {senti_block}")
                     state["news_skips"] = skips[-5:]
+                    _log_activity(state, now, "skipped_sentiment",
+                                  direction=sig.direction.value, score=sig.score,
+                                  detail=senti_block)
                 else:
                     agrees = (senti.score > 0) == (sig.direction == Direction.BUY)
                     if senti.label != "neutral" and agrees:
@@ -65,13 +102,15 @@ def run() -> None:
                         )
                     model = ml.load_model()
                     if model is not None:
-                        votes = [f(ctx) for f in ALL_FACTORS]
                         conf = ml.confidence(model, votes, sig, ctx)
                         if conf < config.ML_MIN_CONFIDENCE:
                             state["last_no_signal"] = (
                                 f"setup found but ML confidence too low "
                                 f"({conf:.0%} < {config.ML_MIN_CONFIDENCE:.0%})"
                             )
+                            _log_activity(state, now, "skipped_ml",
+                                          direction=sig.direction.value, score=sig.score,
+                                          detail=f"ML {conf:.0%}")
                             state["last_scan_ts"] = now_ts
                             storage.save_state(state)
                             return
@@ -79,21 +118,29 @@ def run() -> None:
                     storage.append_signal(sig)
                     state["open_signal"] = storage.signal_to_dict(sig)
                     telegram.send(telegram.format_signal(sig))
+                    _log_activity(state, now, "signal",
+                                  direction=sig.direction.value, score=sig.score,
+                                  detail=f"Entry {sig.entry:.2f} SL {sig.sl:.2f} TP {sig.tp:.2f}")
         else:
-            votes = [f(ctx) for f in ALL_FACTORS]
-            buy = [v.label for v in votes if v.buy]
-            sell = [v.label for v in votes if v.sell]
-            if max(len(buy), len(sell)) >= config.GOLD_MIN_SCORE:
-                # threshold was met, so evaluate() skipped it for oversized risk
+            buy_votes = [v for v in votes if v.buy]
+            sell_votes = [v for v in votes if v.sell]
+            n_buy, n_sell = len(buy_votes), len(sell_votes)
+            if max(n_buy, n_sell) >= config.GOLD_MIN_SCORE:
                 state["last_no_signal"] = (
-                    f"setup at {max(len(buy), len(sell))}/7 skipped — stop too "
+                    f"setup at {max(n_buy, n_sell)}/7 skipped — stop too "
                     "wide for the $100 account even at the minimum lot"
                 )
+                _log_activity(state, now, "wide_stop",
+                              detail=f"{'BUY' if n_buy > n_sell else 'SELL'} {max(n_buy, n_sell)}/7 but stop too wide")
             else:
+                buy_labels = ", ".join(v.label for v in buy_votes) or "none"
+                sell_labels = ", ".join(v.label for v in sell_votes) or "none"
                 state["last_no_signal"] = (
-                    f"buy {len(buy)}/7 ({', '.join(buy) or 'none'}) · "
-                    f"sell {len(sell)}/7 ({', '.join(sell) or 'none'}) — below threshold"
+                    f"buy {n_buy}/7 ({buy_labels}) · "
+                    f"sell {n_sell}/7 ({sell_labels}) — below threshold"
                 )
+                _log_activity(state, now, "no_setup",
+                              detail=f"buy {n_buy}/7 · sell {n_sell}/7")
 
     state["last_scan_ts"] = now_ts
     storage.save_state(state)

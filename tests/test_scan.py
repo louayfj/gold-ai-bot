@@ -131,3 +131,23 @@ def test_no_setup_records_reason(tmp_path, monkeypatch):
     state = storage.load_state()
     assert "1h uptrend" in state["last_no_signal"]
     assert state["last_scan_ts"] > 0
+
+
+def test_factor_votes_stored_in_state(tmp_path, monkeypatch):
+    setup_scan(tmp_path, monkeypatch, new_signal=None)
+    scan.run()
+    state = storage.load_state()
+    assert "last_factor_votes" in state
+    votes = state["last_factor_votes"]
+    assert isinstance(votes, list) and len(votes) > 0
+    assert "name" in votes[0] and "buy" in votes[0] and "sell" in votes[0]
+
+
+def test_activity_log_appended_after_scan(tmp_path, monkeypatch):
+    setup_scan(tmp_path, monkeypatch, new_signal=None)
+    scan.run()
+    state = storage.load_state()
+    assert "activity_log" in state
+    assert len(state["activity_log"]) >= 1
+    entry = state["activity_log"][-1]
+    assert "event" in entry and "time" in entry and "ts" in entry

@@ -149,3 +149,62 @@ def test_api_stats_balance_chart_points(app_with_signals):
     assert len(points) == 2  # only closed signals
     assert points[0]["balance"] == 107.50
     assert points[1]["balance"] == 102.50
+
+
+# --- New stats tests --------------------------------------------------------
+
+def test_api_stats_has_profit_factor(app_with_signals):
+    resp = app_with_signals.get("/api/stats")
+    data = json.loads(resp.data)
+    assert "profit_factor" in data
+
+
+def test_api_stats_profit_factor_calculation(app_with_signals):
+    # win pnl = 7.50, loss pnl = 5.00  →  PF = 1.5
+    resp = app_with_signals.get("/api/stats")
+    data = json.loads(resp.data)
+    assert abs(data["profit_factor"] - 1.5) < 0.01
+
+
+def test_api_stats_max_drawdown(app_with_signals):
+    # balance: 100 → 107.50 → 102.50
+    # peak=107.50, dd=(107.50-102.50)/107.50*100 ≈ 4.65%
+    resp = app_with_signals.get("/api/stats")
+    data = json.loads(resp.data)
+    assert "max_drawdown_pct" in data
+    assert abs(data["max_drawdown_pct"] - 4.65) < 0.1
+
+
+def test_api_stats_streak_is_loss(app_with_signals):
+    # last closed signal (abc2) is sl → streak = 1 loss
+    resp = app_with_signals.get("/api/stats")
+    data = json.loads(resp.data)
+    assert data["streak"] == 1
+    assert data["streak_type"] == "loss"
+
+
+def test_api_stats_avg_duration(app_with_signals):
+    # both trades: 6000s each → 1.666...h  → rounded 1.7
+    resp = app_with_signals.get("/api/stats")
+    data = json.loads(resp.data)
+    assert "avg_duration_h" in data
+    assert abs(data["avg_duration_h"] - 1.7) < 0.1
+
+
+def test_api_stats_score_breakdown(app_with_signals):
+    resp = app_with_signals.get("/api/stats")
+    data = json.loads(resp.data)
+    assert "score_breakdown" in data
+    by_score = {row["score"]: row for row in data["score_breakdown"]}
+    assert "5" in by_score and "6" in by_score
+    assert by_score["5"]["wins"] == 1
+    assert by_score["6"]["wins"] == 0
+
+
+def test_api_stats_session_breakdown(app_with_signals):
+    resp = app_with_signals.get("/api/stats")
+    data = json.loads(resp.data)
+    assert "session_breakdown" in data
+    assert len(data["session_breakdown"]) > 0
+    for row in data["session_breakdown"]:
+        assert "session" in row and "total" in row and "win_rate" in row

@@ -35,6 +35,16 @@ A signal that fires *against* strongly one-sided news is skipped and the
 skip is logged; agreeing sentiment is added to the signal's reasons.
 Headline fetch failures fail open (neutral, no effect).
 
+Last gate: an ML confidence filter (`goldeye/ml.py` + `goldeye/model.json`).
+The model is a random forest trained by `train_model.py` on ~2 years of
+replayed engine signals (4,363 closed trades). Signals it rates below
+`ML_MIN_CONFIDENCE` are skipped. On its held-out test set (newest 873
+signals, never seen in training) approved trades won 56.1% vs a 41.4%
+baseline. Inference is pure Python — scikit-learn is only needed locally
+to retrain. Delete `goldeye/model.json` to disable the gate entirely.
+Retrain every 1–2 months as live data accumulates: `python train_model.py`
+(only overwrites the model if it beats the baseline by ≥5pts out-of-sample).
+
 ## The log
 
 - `data/signals.csv` — every signal with entry/SL/TP, lot, score, votes, outcome
@@ -49,6 +59,7 @@ Headline fetch failures fail open (neutral, no effect).
 - `GOLD_MIN_SCORE`, `RR`, `SL_ATR_MULT`, `NEWS_BUFFER_MIN`, `SESSION_UTC`, `TZ`.
 - `SENTIMENT_BLOCK_SCORE` — how one-sided the news must be to veto a signal;
   `SENTIMENT_MAX_AGE_H` — headline lookback window.
+- `ML_MIN_CONFIDENCE` — minimum model confidence to let a signal through.
 
 ## Setup
 

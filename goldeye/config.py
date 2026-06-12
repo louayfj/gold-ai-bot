@@ -28,6 +28,8 @@ SIGNAL_TTL_H = 24
 NEWS_BUFFER_MIN = 45
 SENTIMENT_BLOCK_SCORE = 3   # skip signal if headlines score this hard against it
 SENTIMENT_MAX_AGE_H = 12    # only headlines from the last N hours count
+ML_MIN_CONFIDENCE = 0.55    # skip signal if the trained model rates it below this
+                            # (only applies when goldeye/model.json exists)
 SESSION_UTC = (7, 21)  # London open .. New York close, hours UTC
 TZ = "Asia/Bangkok"
 

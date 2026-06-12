@@ -5,3 +5,5 @@ __pycache__/
 .venv/
 candles_cache.json
 .DS_Store
+.fly_token
+history_cache.json

@@ -12,7 +12,7 @@ class StubCtx:
 
 
 def setup_scan(tmp_path, monkeypatch, *, open_signal=None, new_signal=None,
-               news=None, senti=None):
+               news=None, senti=None, ml_model=None, ml_conf=0.0):
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "t")
     monkeypatch.setenv("TELEGRAM_CHAT_ID", "c")
     monkeypatch.setenv("TWELVEDATA_API_KEY", "k")
@@ -30,6 +30,9 @@ def setup_scan(tmp_path, monkeypatch, *, open_signal=None, new_signal=None,
     monkeypatch.setattr(scan.sentiment, "fetch_headlines", lambda: ([], None))
     monkeypatch.setattr(scan.sentiment, "analyze",
                         lambda headlines: senti or scan.sentiment.Sentiment(0, "neutral", 0))
+    monkeypatch.setattr(scan.ml, "load_model", lambda path=None: ml_model)
+    monkeypatch.setattr(scan.ml, "confidence",
+                        lambda model, votes, sig, ctx: ml_conf)
     monkeypatch.setattr(scan, "ALL_FACTORS", [lambda ctx: scan.Vote(False, False, "stub")])
 
     if open_signal:
@@ -90,6 +93,32 @@ def test_sentiment_agreement_noted_in_reasons(tmp_path, monkeypatch):
     scan.run()
     assert storage.load_state()["open_signal"]["id"] == "sent01"
     assert any("news sentiment bullish" in m for m in sent)
+
+
+def test_ml_low_confidence_suppresses_signal(tmp_path, monkeypatch):
+    sent = setup_scan(tmp_path, monkeypatch, new_signal=make_signal(),
+                      ml_model={"trees": []}, ml_conf=0.30)
+    scan.run()
+    state = storage.load_state()
+    assert state["open_signal"] is None
+    assert sent == []
+    assert "ML confidence" in state["last_no_signal"]
+
+
+def test_ml_high_confidence_passes_and_noted(tmp_path, monkeypatch):
+    sent = setup_scan(tmp_path, monkeypatch, new_signal=make_signal(id="ml001"),
+                      ml_model={"trees": []}, ml_conf=0.72)
+    scan.run()
+    assert storage.load_state()["open_signal"]["id"] == "ml001"
+    assert any("ML confidence 72%" in m for m in sent)
+
+
+def test_no_model_means_no_gating(tmp_path, monkeypatch):
+    sent = setup_scan(tmp_path, monkeypatch, new_signal=make_signal(id="ml002"),
+                      ml_model=None, ml_conf=0.0)
+    scan.run()
+    assert storage.load_state()["open_signal"]["id"] == "ml002"
+    assert any("GOLD SIGNAL" in m for m in sent)
 
 
 def test_no_setup_records_reason(tmp_path, monkeypatch):

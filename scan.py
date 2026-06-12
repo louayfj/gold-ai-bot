@@ -4,7 +4,7 @@ Order matters: resolve the open signal first, then look for a new one."""
 import sys
 from datetime import datetime, timezone
 
-from goldeye import config, data, engine, news, sentiment, storage, telegram, tracker
+from goldeye import config, data, engine, ml, news, sentiment, storage, telegram, tracker
 from goldeye.factors import ALL_FACTORS, FactorContext, Vote  # noqa: F401 (Vote: test seam)
 from goldeye.models import Direction
 
@@ -63,6 +63,19 @@ def run() -> None:
                         sig.reasons.append(
                             f"news sentiment {senti.label} ({senti.score:+d})"
                         )
+                    model = ml.load_model()
+                    if model is not None:
+                        votes = [f(ctx) for f in ALL_FACTORS]
+                        conf = ml.confidence(model, votes, sig, ctx)
+                        if conf < config.ML_MIN_CONFIDENCE:
+                            state["last_no_signal"] = (
+                                f"setup found but ML confidence too low "
+                                f"({conf:.0%} < {config.ML_MIN_CONFIDENCE:.0%})"
+                            )
+                            state["last_scan_ts"] = now_ts
+                            storage.save_state(state)
+                            return
+                        sig.reasons.append(f"ML confidence {conf:.0%}")
                     storage.append_signal(sig)
                     state["open_signal"] = storage.signal_to_dict(sig)
                     telegram.send(telegram.format_signal(sig))

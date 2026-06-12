@@ -28,6 +28,13 @@ honestly. Runs free 24/7 on GitHub Actions — no server.
 The 7 factors: 1h EMA50/200 trend, 15m RSI pullback, MACD, ATR regime,
 support/resistance, London/NY session, candlestick patterns.
 
+On top of the factor vote, a news-sentiment layer (`goldeye/sentiment.py`)
+scores the last 12h of headlines from free RSS feeds (FXStreet,
+Investing.com commodities, MarketWatch) as gold-bullish or gold-bearish.
+A signal that fires *against* strongly one-sided news is skipped and the
+skip is logged; agreeing sentiment is added to the signal's reasons.
+Headline fetch failures fail open (neutral, no effect).
+
 ## The log
 
 - `data/signals.csv` — every signal with entry/SL/TP, lot, score, votes, outcome
@@ -40,6 +47,8 @@ support/resistance, London/NY session, candlestick patterns.
 - `RISK_GOLD` / `MAX_RISK_MULT` — risk plan and the per-trade cap.
 - `SILVER_INFO_ONLY` — set `False` to give silver signals real lot sizes.
 - `GOLD_MIN_SCORE`, `RR`, `SL_ATR_MULT`, `NEWS_BUFFER_MIN`, `SESSION_UTC`, `TZ`.
+- `SENTIMENT_BLOCK_SCORE` — how one-sided the news must be to veto a signal;
+  `SENTIMENT_MAX_AGE_H` — headline lookback window.
 
 ## Setup
 

@@ -12,7 +12,7 @@ class StubCtx:
 
 
 def setup_scan(tmp_path, monkeypatch, *, open_signal=None, new_signal=None,
-               news=None):
+               news=None, senti=None):
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "t")
     monkeypatch.setenv("TELEGRAM_CHAT_ID", "c")
     monkeypatch.setenv("TWELVEDATA_API_KEY", "k")
@@ -27,6 +27,9 @@ def setup_scan(tmp_path, monkeypatch, *, open_signal=None, new_signal=None,
     monkeypatch.setattr(scan.engine, "evaluate", lambda ctx: new_signal)
     monkeypatch.setattr(scan.news, "fetch_calendar", lambda: ([], None))
     monkeypatch.setattr(scan.news, "news_block", lambda now, events: news)
+    monkeypatch.setattr(scan.sentiment, "fetch_headlines", lambda: ([], None))
+    monkeypatch.setattr(scan.sentiment, "analyze",
+                        lambda headlines: senti or scan.sentiment.Sentiment(0, "neutral", 0))
     monkeypatch.setattr(scan, "ALL_FACTORS", [lambda ctx: scan.Vote(False, False, "stub")])
 
     if open_signal:
@@ -66,6 +69,27 @@ def test_news_block_suppresses_signal(tmp_path, monkeypatch):
     assert storage.read_signals() == []
     assert sent == []
     assert "FOMC" in state["last_no_signal"]
+
+
+def test_sentiment_block_suppresses_signal(tmp_path, monkeypatch):
+    # BUY signal vs strongly bearish headlines -> skipped, logged, not sent
+    bearish = scan.sentiment.Sentiment(-4, "bearish", 6)
+    sent = setup_scan(tmp_path, monkeypatch, new_signal=make_signal(), senti=bearish)
+    scan.run()
+    state = storage.load_state()
+    assert state["open_signal"] is None
+    assert storage.read_signals() == []
+    assert sent == []
+    assert "bearish" in state["last_no_signal"]
+
+
+def test_sentiment_agreement_noted_in_reasons(tmp_path, monkeypatch):
+    bullish = scan.sentiment.Sentiment(4, "bullish", 7)
+    sent = setup_scan(tmp_path, monkeypatch, new_signal=make_signal(id="sent01"),
+                      senti=bullish)
+    scan.run()
+    assert storage.load_state()["open_signal"]["id"] == "sent01"
+    assert any("news sentiment bullish" in m for m in sent)
 
 
 def test_no_setup_records_reason(tmp_path, monkeypatch):

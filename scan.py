@@ -4,8 +4,9 @@ Order matters: resolve the open signal first, then look for a new one."""
 import sys
 from datetime import datetime, timezone
 
-from goldeye import config, data, engine, news, storage, telegram, tracker
+from goldeye import config, data, engine, news, sentiment, storage, telegram, tracker
 from goldeye.factors import ALL_FACTORS, FactorContext, Vote  # noqa: F401 (Vote: test seam)
+from goldeye.models import Direction
 
 
 def run() -> None:
@@ -43,9 +44,28 @@ def run() -> None:
                 skips.append(f"{now:%d %b %H:%M} UTC — {block}")
                 state["news_skips"] = skips[-5:]
             else:
-                storage.append_signal(sig)
-                state["open_signal"] = storage.signal_to_dict(sig)
-                telegram.send(telegram.format_signal(sig))
+                headlines, senti_warn = sentiment.fetch_headlines()
+                if senti_warn:
+                    state.setdefault("errors", []).append(senti_warn)
+                senti = sentiment.analyze(headlines)
+                state["last_sentiment"] = (
+                    f"{senti.label} ({senti.score:+d} from {senti.n} headlines)"
+                )
+                senti_block = sentiment.opposes(sig.direction, senti)
+                if senti_block:
+                    state["last_no_signal"] = f"setup found but {senti_block}"
+                    skips = state.setdefault("news_skips", [])
+                    skips.append(f"{now:%d %b %H:%M} UTC — {senti_block}")
+                    state["news_skips"] = skips[-5:]
+                else:
+                    agrees = (senti.score > 0) == (sig.direction == Direction.BUY)
+                    if senti.label != "neutral" and agrees:
+                        sig.reasons.append(
+                            f"news sentiment {senti.label} ({senti.score:+d})"
+                        )
+                    storage.append_signal(sig)
+                    state["open_signal"] = storage.signal_to_dict(sig)
+                    telegram.send(telegram.format_signal(sig))
         else:
             votes = [f(ctx) for f in ALL_FACTORS]
             buy = [v.label for v in votes if v.buy]
